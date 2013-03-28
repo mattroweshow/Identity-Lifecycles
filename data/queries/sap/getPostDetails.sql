@@ -1,0 +1,1 @@
+SELECT messageuri, contributor, creationdate FROM robust_SCN_messages
