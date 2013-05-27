@@ -1,11 +1,20 @@
 package uk.ac.lancs.socialcomp.identity.statistics;
 
 import java.util.Date;
+import java.util.HashSet;
 
 public class Lifetime {
     String userid;
     Date birth;
     Date death;
+    HashSet<String> posts;
+
+    public Lifetime(String userid, Date birth, Date death, HashSet<String> posts) {
+        this.userid = userid;
+        this.birth = birth;
+        this.death = death;
+        this.posts = posts;
+    }
 
     public Lifetime(String userid, Date birth, Date death) {
         this.userid = userid;
@@ -40,12 +49,22 @@ public class Lifetime {
         this.death = death;
     }
 
+    public HashSet<String> getPosts() {
+        return posts;
+    }
+
+    public void setPosts(HashSet<String> posts) {
+        this.posts = posts;
+    }
+
+
     @Override
     public String toString() {
         return "Lifetime{" +
                 "userid='" + userid + '\'' +
                 ", birth=" + birth +
                 ", death=" + death +
+                ", posts=" + posts.size() +
                 '}';
     }
 }

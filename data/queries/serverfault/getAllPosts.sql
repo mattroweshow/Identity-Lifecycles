@@ -1,0 +1,1 @@
+SELECT id as "messageuri", owner_id as "contributor", created as "created", body_text as "content" FROM post

@@ -1,0 +1,1 @@
+SELECT reply_to_id AS "reply", original_post_id AS "original" FROM ReplyTo

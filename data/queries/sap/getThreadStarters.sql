@@ -1,0 +1,1 @@
+SELECT messageuri, contributor, created FROM robust_scn_messages WHERE messageuri NOT IN (SELECT reply FROM robust_scn_replies)

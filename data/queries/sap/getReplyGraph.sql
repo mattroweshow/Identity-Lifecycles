@@ -1,0 +1,1 @@
+SELECT reply AS "reply", original AS "original" FROM robust_scn_replies
