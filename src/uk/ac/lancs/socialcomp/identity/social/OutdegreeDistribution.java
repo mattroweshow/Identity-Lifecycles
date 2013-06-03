@@ -23,7 +23,7 @@ import java.util.*;
  */
 public class OutdegreeDistribution {
 
-    public static final String DB = "sap";
+    String DB;
 
     HashMap<String,Date> postToDate;
     HashMap<String,HashSet<String>> userToPosts;
@@ -33,7 +33,9 @@ public class OutdegreeDistribution {
     HashMap<String,HashSet<String>> originalToReplies;
 
 
-    public OutdegreeDistribution() {
+    public OutdegreeDistribution(String DB) {
+        this.DB = DB;
+
         // load data into memory
         try {
             System.out.println("-Loading data into memory");
@@ -119,10 +121,13 @@ public class OutdegreeDistribution {
             for (String user : trainingUsers) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
-                    TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
-                    if(stageEntropies.size() == 20) {
-                        String vector = this.convertToStringVector(stageEntropies);
-                        buffer.append(vector + "\n");
+                    try {
+                        TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
+                        if(stageEntropies.size() == 20) {
+                            String vector = this.convertToStringVector(stageEntropies);
+                            buffer.append(vector + "\n");
+                        }
+                    }  catch(Exception e) {
                     }
                 }
             }
@@ -222,10 +227,13 @@ public class OutdegreeDistribution {
             for (String user : trainingUsers) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
-                    TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
-                    if(stageEntropies.size() == 20) {
-                        String vector = this.convertToStringVector(stageEntropies);
-                        buffer.append(vector + "\n");
+                    try {
+                        TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
+                        if(stageEntropies.size() == 20) {
+                            String vector = this.convertToStringVector(stageEntropies);
+                            buffer.append(vector + "\n");
+                        }
+                    } catch(Exception e) {
                     }
                 }
             }
@@ -351,10 +359,13 @@ public class OutdegreeDistribution {
             for (String user : trainingUsers) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
-                    TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
-                    if(stageEntropies.size() == 20) {
-                        String vector = this.convertToStringVector(stageEntropies);
-                        buffer.append(vector + "\n");
+                    try {
+                        TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
+                        if(stageEntropies.size() == 20) {
+                            String vector = this.convertToStringVector(stageEntropies);
+                            buffer.append(vector + "\n");
+                        }
+                    } catch(Exception e) {
                     }
 
                     double soFar = (count / totalUsers) * 100;
@@ -496,8 +507,9 @@ public class OutdegreeDistribution {
 
 
     public static void main(String[] args) {
+        String db = "boards";
 
-        OutdegreeDistribution outdegreeDistribution = new OutdegreeDistribution();
+        OutdegreeDistribution outdegreeDistribution = new OutdegreeDistribution(db);
 
         outdegreeDistribution.deriveEntropyPerStageDistributions();
         outdegreeDistribution.deriveCrossEntropyPerStageDistributions();

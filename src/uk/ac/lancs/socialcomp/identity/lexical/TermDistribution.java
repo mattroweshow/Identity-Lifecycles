@@ -96,10 +96,13 @@ public class TermDistribution {
             for (String user : trainingUsers) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
-                    TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
-                    if(stageEntropies.size() == 20) {
-                        String vector = this.convertToStringVector(stageEntropies);
-                        buffer.append(vector + "\n");
+                    try {
+                        TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
+                        if(stageEntropies.size() == 20) {
+                            String vector = this.convertToStringVector(stageEntropies);
+                            buffer.append(vector + "\n");
+                        }
+                    } catch(Exception e) {
                     }
                 }
             }
@@ -195,10 +198,13 @@ public class TermDistribution {
             for (String user : trainingUsers) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
-                    TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
-                    if(stageEntropies.size() == 20) {
-                        String vector = this.convertToStringVector(stageEntropies);
-                        buffer.append(vector + "\n");
+                    try {
+                        TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
+                        if(stageEntropies.size() == 20) {
+                            String vector = this.convertToStringVector(stageEntropies);
+                            buffer.append(vector + "\n");
+                        }
+                    } catch(Exception e) {
                     }
                 }
             }
@@ -316,10 +322,13 @@ public class TermDistribution {
             for (String user : trainingUsers) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
-                    TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
-                    if(stageEntropies.size() == 20) {
-                        String vector = this.convertToStringVector(stageEntropies);
-                        buffer.append(vector + "\n");
+                    try {
+                        TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
+                        if(stageEntropies.size() == 20) {
+                            String vector = this.convertToStringVector(stageEntropies);
+                            buffer.append(vector + "\n");
+                        }
+                    } catch (Exception e) {
                     }
 
                     double soFar = (count / totalUsers) * 100;
