@@ -100,7 +100,7 @@ public class TermDistribution {
                         TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
                         if(stageEntropies.size() == 20) {
                             String vector = this.convertToStringVector(stageEntropies);
-                            buffer.append(vector + "\n");
+                            buffer.append(user + "\t" + vector + "\n");
                         }
                     } catch(Exception e) {
                     }
@@ -202,7 +202,7 @@ public class TermDistribution {
                         TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
                         if(stageEntropies.size() == 20) {
                             String vector = this.convertToStringVector(stageEntropies);
-                            buffer.append(vector + "\n");
+                            buffer.append(user + "\t" + vector + "\n");
                         }
                     } catch(Exception e) {
                     }
@@ -326,7 +326,7 @@ public class TermDistribution {
                         TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
                         if(stageEntropies.size() == 20) {
                             String vector = this.convertToStringVector(stageEntropies);
-                            buffer.append(vector + "\n");
+                            buffer.append(user + "\t" + vector + "\n");
                         }
                     } catch (Exception e) {
                     }

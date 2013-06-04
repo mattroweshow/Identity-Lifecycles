@@ -23,7 +23,8 @@ import java.util.*;
  */
 public class IndegreeDistribution {
 
-    public static final String DB = "boards";
+//    public static final String DB = "boards";
+    String DB;
 
     HashMap<String,Date> postToDate;
     HashMap<String,HashSet<String>> userToPosts;
@@ -33,7 +34,8 @@ public class IndegreeDistribution {
     HashMap<String,HashSet<String>> originalToReplies;
 
 
-    public IndegreeDistribution() {
+    public IndegreeDistribution(String DB) {
+        this.DB = DB;
         // load data into memory
         try {
             System.out.println("-Loading data into memory");
@@ -122,7 +124,7 @@ public class IndegreeDistribution {
                     TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
                     if(stageEntropies.size() == 20) {
                         String vector = this.convertToStringVector(stageEntropies);
-                        buffer.append(vector + "\n");
+                        buffer.append(user + "\t" + vector + "\n");
                     }
                 }
             }
@@ -222,7 +224,7 @@ public class IndegreeDistribution {
                     TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
                     if(stageEntropies.size() == 20) {
                         String vector = this.convertToStringVector(stageEntropies);
-                        buffer.append(vector + "\n");
+                        buffer.append(user + "\t" + vector + "\n");
                     }
                 }
             }
@@ -350,7 +352,7 @@ public class IndegreeDistribution {
                     TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user,this.userToPosts.get(user), lifetimes.get(user));
                     if(stageEntropies.size() == 20) {
                         String vector = this.convertToStringVector(stageEntropies);
-                        buffer.append(vector + "\n");
+                        buffer.append(user + "\t" + vector + "\n");
                     }
 
                     double soFar = (count / totalUsers) * 100;
@@ -487,11 +489,11 @@ public class IndegreeDistribution {
 
     public static void main(String[] args) {
 
-        IndegreeDistribution indegreeDistribution = new IndegreeDistribution();
-
-        indegreeDistribution.deriveEntropyPerStageDistributions();
-        indegreeDistribution.deriveCrossEntropyPerStageDistributions();
-        indegreeDistribution.deriveCommunityDependentStageDistributions();
+//        IndegreeDistribution indegreeDistribution = new IndegreeDistribution();
+//
+//        indegreeDistribution.deriveEntropyPerStageDistributions();
+//        indegreeDistribution.deriveCrossEntropyPerStageDistributions();
+//        indegreeDistribution.deriveCommunityDependentStageDistributions();
 
 
 
