@@ -25,14 +25,16 @@ import java.util.*;
 public class TermDistribution {
 
     String DB;
+    String split;
 
     HashMap<String,Date> postToDate;
     HashMap<String,HashSet<String>> userToPosts;
     HashMap<String,String> postToUser;
     HashMap<String,String> postToContent;
 
-    public TermDistribution(String db) {
+    public TermDistribution(String db, String split) {
         this.DB = db;
+        this.split = split;
 
         try {
             System.out.println("-Loading data into memory");
@@ -85,15 +87,20 @@ public class TermDistribution {
         try {
             // get the training set users for this dataset
             DatasetRetriever retriever = new DatasetRetriever();
-            HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
+            HashSet<String> users = new HashSet<String>();
+            if(split.equals("train")) {
+                users = retriever.getTrainingUsers(DB);
+            } else {
+                users = retriever.getTestingUsers(DB);
+            }
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the term distribution across each stage
             StringBuffer buffer = new StringBuffer();
-            for (String user : trainingUsers) {
+            for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     try {
@@ -107,7 +114,7 @@ public class TermDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_lexical_entropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_lexical_entropies_stages.tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -187,15 +194,20 @@ public class TermDistribution {
         try {
             // get the training set users for this dataset
             DatasetRetriever retriever = new DatasetRetriever();
-            HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
+            HashSet<String> users = new HashSet<String>();
+            if(split.equals("train")) {
+                users = retriever.getTrainingUsers(DB);
+            } else {
+                users = retriever.getTestingUsers(DB);
+            }
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
-            for (String user : trainingUsers) {
+            for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     try {
@@ -209,7 +221,7 @@ public class TermDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_lexical_user_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_lexical_user_crossentropies_stages.tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -309,17 +321,22 @@ public class TermDistribution {
         try {
             // get the training set users for this dataset
             DatasetRetriever retriever = new DatasetRetriever();
-            HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
+            HashSet<String> users = new HashSet<String>();
+            if(split.equals("train")) {
+                users = retriever.getTrainingUsers(DB);
+            } else {
+                users = retriever.getTestingUsers(DB);
+            }
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
-            double totalUsers = trainingUsers.size();
+            double totalUsers = users.size();
             double count = 1;
-            for (String user : trainingUsers) {
+            for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     try {
@@ -337,7 +354,7 @@ public class TermDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_lexical_community_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_lexical_community_crossentropies_stages.tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -462,10 +479,11 @@ public class TermDistribution {
     public static void main(String[] args) {
 
         String[] platforms = {"boards"};
+        String split = "test";
 
         for (String platform : platforms) {
             System.out.println("\nProceessing: " + platform);
-            TermDistribution termDistribution = new TermDistribution(platform);
+            TermDistribution termDistribution = new TermDistribution(platform,split);
             termDistribution.deriveEntropyPerStageDistributions();
             termDistribution.deriveCrossEntropyPerStageDistributions();
             termDistribution.deriveCommunityDependentStageDistributions();

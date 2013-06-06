@@ -73,7 +73,7 @@ public class ReplyDistribution {
             HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the activity proportion for each user across his stages

@@ -24,6 +24,7 @@ import java.util.*;
 public class OutdegreeDistribution {
 
     String DB;
+    String split;
 
     HashMap<String,Date> postToDate;
     HashMap<String,HashSet<String>> userToPosts;
@@ -33,8 +34,9 @@ public class OutdegreeDistribution {
     HashMap<String,HashSet<String>> originalToReplies;
 
 
-    public OutdegreeDistribution(String DB) {
+    public OutdegreeDistribution(String DB, String split) {
         this.DB = DB;
+        this.split = split;
 
         // load data into memory
         try {
@@ -110,15 +112,20 @@ public class OutdegreeDistribution {
         try {
             // get the training set users for this dataset
             DatasetRetriever retriever = new DatasetRetriever();
-            HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
+            HashSet<String> users = new HashSet<String>();
+            if(split.equals("train")) {
+                users = retriever.getTrainingUsers(DB);
+            } else {
+                users = retriever.getTestingUsers(DB);
+            }
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
-            for (String user : trainingUsers) {
+            for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     try {
@@ -132,7 +139,7 @@ public class OutdegreeDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_outdegree_entropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split +"_outdegree_entropies_stages.tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -216,15 +223,20 @@ public class OutdegreeDistribution {
         try {
             // get the training set users for this dataset
             DatasetRetriever retriever = new DatasetRetriever();
-            HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
+            HashSet<String> users = new HashSet<String>();
+            if(split.equals("train")) {
+                users = retriever.getTrainingUsers(DB);
+            } else {
+                users = retriever.getTestingUsers(DB);
+            }
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
-            for (String user : trainingUsers) {
+            for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     try {
@@ -238,7 +250,7 @@ public class OutdegreeDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_outdegree_user_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_outdegree_user_crossentropies_stages.tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -346,17 +358,22 @@ public class OutdegreeDistribution {
         try {
             // get the training set users for this dataset
             DatasetRetriever retriever = new DatasetRetriever();
-            HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
+            HashSet<String> users = new HashSet<String>();
+            if(split.equals("train")) {
+                users = retriever.getTrainingUsers(DB);
+            } else {
+                users = retriever.getTestingUsers(DB);
+            }
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
-            double totalUsers = trainingUsers.size();
+            double totalUsers = users.size();
             double count = 1;
-            for (String user : trainingUsers) {
+            for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     try {
@@ -374,7 +391,7 @@ public class OutdegreeDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_outdegree_community_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_outdegree_community_crossentropies_stages.tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -508,8 +525,9 @@ public class OutdegreeDistribution {
 
     public static void main(String[] args) {
         String db = "boards";
+        String split = "test";
 
-        OutdegreeDistribution outdegreeDistribution = new OutdegreeDistribution(db);
+        OutdegreeDistribution outdegreeDistribution = new OutdegreeDistribution(db,split);
 
         outdegreeDistribution.deriveEntropyPerStageDistributions();
         outdegreeDistribution.deriveCrossEntropyPerStageDistributions();

@@ -25,6 +25,7 @@ public class IndegreeDistribution {
 
 //    public static final String DB = "boards";
     String DB;
+    String split;
 
     HashMap<String,Date> postToDate;
     HashMap<String,HashSet<String>> userToPosts;
@@ -34,8 +35,11 @@ public class IndegreeDistribution {
     HashMap<String,HashSet<String>> originalToReplies;
 
 
-    public IndegreeDistribution(String DB) {
+    public IndegreeDistribution(String DB, String split) {
+        // set the db to use and the split
         this.DB = DB;
+        this.split = split;
+
         // load data into memory
         try {
             System.out.println("-Loading data into memory");
@@ -110,15 +114,20 @@ public class IndegreeDistribution {
         try {
             // get the training set users for this dataset
             DatasetRetriever retriever = new DatasetRetriever();
-            HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
+            HashSet<String> users = new HashSet<String>();
+            if(split.equals("train")) {
+                users = retriever.getTrainingUsers(DB);
+            } else {
+                users = retriever.getTestingUsers(DB);
+            }
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
-            for (String user : trainingUsers) {
+            for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
@@ -129,7 +138,7 @@ public class IndegreeDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_indegree_entropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_indegree_entropies_stages.tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -210,15 +219,20 @@ public class IndegreeDistribution {
         try {
             // get the training set users for this dataset
             DatasetRetriever retriever = new DatasetRetriever();
-            HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
+            HashSet<String> users = new HashSet<String>();
+            if(split.equals("train")) {
+                users = retriever.getTrainingUsers(DB);
+            } else {
+                users = retriever.getTestingUsers(DB);
+            }
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
-            for (String user : trainingUsers) {
+            for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
@@ -229,7 +243,7 @@ public class IndegreeDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_indegree_user_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_indegree_user_crossentropies_stages.tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -336,17 +350,22 @@ public class IndegreeDistribution {
         try {
             // get the training set users for this dataset
             DatasetRetriever retriever = new DatasetRetriever();
-            HashSet<String> trainingUsers = retriever.getTrainingUsers(DB);
+            HashSet<String> users = new HashSet<String>();
+            if(split.equals("train")) {
+                users = retriever.getTrainingUsers(DB);
+            } else {
+                users = retriever.getTestingUsers(DB);
+            }
 
             // get the lifeperods of each user
-            LifeTimeExtractor extractor = new LifeTimeExtractor();
+            LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
             HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
-            double totalUsers = trainingUsers.size();
+            double totalUsers = users.size();
             double count = 1;
-            for (String user : trainingUsers) {
+            for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user,this.userToPosts.get(user), lifetimes.get(user));
@@ -361,7 +380,7 @@ public class IndegreeDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_indegree_community_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_indegree_community_crossentropies_stages.tsv");
             writer.write(buffer.toString());
             writer.close();
 

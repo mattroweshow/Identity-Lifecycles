@@ -15,14 +15,17 @@ import java.util.*;
 
 public class LifeTimeExtractor {
 
-    public static final String DB = "facebook";
+    String DB;
 
     Logger logger = LogManager.getLogger(LifeTimeExtractor.class.getName());
 
+    public LifeTimeExtractor(String DB) {
+        this.DB = DB;
+    }
 
     /*
-     * Derive a list of lifetime objects of community users
-     */
+    * Derive a list of lifetime objects of community users
+    */
     public List<Lifetime> deriveLifetimes() throws Exception {
         // get the SQL query that is to be run in order to retrieve the user info
         String query = QueryGrabber.getQuery(DB,"getPostDetails");
@@ -186,7 +189,9 @@ public class LifeTimeExtractor {
     public static void main(String[] args) {
         try {
 
-            LifeTimeExtractor lifeTimeExtractor = new LifeTimeExtractor();
+            String DB = "boards";
+
+            LifeTimeExtractor lifeTimeExtractor = new LifeTimeExtractor(DB);
             List<Lifetime> lifetimes = lifeTimeExtractor.deriveLifetimes();
             System.out.println(lifetimes.size());
             lifeTimeExtractor.outputLifetimeStats(lifetimes);
