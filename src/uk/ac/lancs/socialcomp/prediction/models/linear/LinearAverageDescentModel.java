@@ -64,6 +64,11 @@ public class LinearAverageDescentModel implements PredictionModel {
         for (Instance instance : trainingData.getInstances()) {
             double localError = this.apply(instance);
             localError *= instance.getFeatures().get(featureIndex).getValue();
+
+            // try adding the regulariser onto the end
+            double regulariser = lambda * (1 - alpha) * b.get(featureIndex) + lambda * alpha;
+            localError += regulariser;
+
             totalLossJ += localError;
         }
         if(totalLossJ != 0) {
@@ -71,8 +76,7 @@ public class LinearAverageDescentModel implements PredictionModel {
         }
 
         // add the regularisation term to the end
-        double regulariser = lambda * (1 - alpha) * b.get(featureIndex) + lambda * alpha;
-        double deltaJ = totalLossJ + regulariser;
+        double deltaJ = totalLossJ;
 
         // update parameter at the feature index based on deltaJ
         double betaJ = b.get(featureIndex);
@@ -88,7 +92,7 @@ public class LinearAverageDescentModel implements PredictionModel {
         }
         // work out the error in prediction
         double error = instance.response - prob;
-        return error;
+        return prob;
     }
 
     @Override

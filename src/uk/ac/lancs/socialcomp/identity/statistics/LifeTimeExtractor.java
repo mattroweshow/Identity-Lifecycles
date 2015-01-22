@@ -158,6 +158,40 @@ public class LifeTimeExtractor {
 
 
     /*
+    * Derive a lifetime map from the supplied map files
+    */
+    public HashMap<String,Lifetime> deriveLifetimeMap(HashMap<String,Date> postsToDate,
+                                                      HashMap<String,HashSet<String>> userToPosts) throws Exception {
+
+        // derive the life times for the user
+        logger.trace("Working out the life times for the users");
+        HashMap<String,Lifetime> lifetimes = new HashMap<String, Lifetime>();
+        for (String user : userToPosts.keySet()) {
+            HashSet<String> posts = userToPosts.get(user);
+            // get the earliest post
+            Date earliest = new Date(); // this will set the date object as today's
+            for (String post : posts) {
+                Date postDate = postsToDate.get(post);
+                if(postDate.before(earliest))
+                    earliest = postDate;
+            }
+            // get the latest post
+            Date latest = earliest;
+            for (String post : posts) {
+                Date postDate = postsToDate.get(post);
+                if(postDate.after(latest))
+                    latest = postDate;
+            }
+            // create the lifetime object and record it
+            Lifetime lifetime = new Lifetime(user,earliest,latest, posts);
+            lifetimes.put(user,lifetime);
+        }
+
+        return lifetimes;
+    }
+
+
+    /*
      * Outputs the lifetime statistics to a file
      */
     public void outputLifetimeStats(List<Lifetime> lifetimes) throws Exception {

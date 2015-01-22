@@ -18,11 +18,11 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
     int sigmaFidelity;
     PredictionModel model;
 
-    int m;
+    public int m;
 
     @Override
     public void setPredictionModel(double lambda, double eta, double alpha, double epsilon, int sigmaFidelity,
-                                   Dataset training, int predictionModel) {
+                                   Dataset training) {
 
         // get the number of features in the dataset
         m = 0;
@@ -35,7 +35,7 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
         model = new LinearAverageDescentModel(lambda, eta,  alpha, epsilon, m, training);
 
         this.sigmaFidelity = sigmaFidelity;
-        this.maxEpochs = 100;
+        this.maxEpochs = 10;
     }
 
     @Override
@@ -52,7 +52,7 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
             featureIDs.add(i);
         }
 
-        while(!model.converged() || (model.getEpochs() < maxEpochs)) {
+        while(!model.converged() && (model.getEpochs() < maxEpochs)) {
             // shuffle the order of the training users
             Collections.shuffle(featureIDs);
 
@@ -62,18 +62,24 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
                 model.updateBatch(featureID);
             }
 
+//            System.out.println("Epoch = " + model.getEpochs());
         }
+//        System.out.println("Finished training");
 
     }
 
     @Override
     public double evaluateModel(Dataset test) {
+//        System.out.println("Evaluating Model");
         // compute the mapping between instances and churn probabilities
         HashMap<Instance,Double> instanceToChurnProbability = new HashMap<Instance, Double>();
         for (Instance instance : test.getInstances()) {
             double churnProb = model.test(instance);
-            churnProb = Math.log(churnProb);
-            instanceToChurnProbability.put(instance,churnProb);
+//            System.out.println("prob = " + churnProb);
+//            churnProb = Math.log(churnProb);
+//            System.out.println("logged = " + churnProb);
+//            if(!new Double(churnProb).isNaN())
+             instanceToChurnProbability.put(instance,churnProb);
         }
 
         // go through the test instances and derive the TPR and FPR for them
@@ -88,11 +94,12 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
     * Convenience function to derive the mapping between TPR and FPR values
     */
     private TreeMap<Double,Double> getTPRToFPR(HashMap<Instance,Double> instanceToChurnProbability) {
+//        System.out.println("Calculating TPR FPR map");
         TreeMap<Double,Double> tprToFPR = new TreeMap<Double, Double>();
 
         // dynamically derive the sigma values based on splitting the min-max churn probability interval
-        double minChunProb = 10;
-        double maxChurnProb = -10;
+        double minChunProb = 10000;
+        double maxChurnProb = -10000;
         for (Double churnProb : instanceToChurnProbability.values()) {
             if(minChunProb > churnProb)
                 minChunProb = churnProb;
@@ -114,15 +121,17 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
 
         // bin splitting approach 2
         // get the next smallest value over the min
-        double nextMinChurnProb = 10;
+        double nextMinChurnProb = maxChurnProb;
         for (Double churnProb : instanceToChurnProbability.values()) {
             if((churnProb > minChunProb) && (churnProb < nextMinChurnProb)) {
                 nextMinChurnProb = churnProb;
             }
         }
+
         // derive the bin width as being the gap between the min and next probability value
         double binWidth = nextMinChurnProb - minChunProb;
         Stack<Double> sigmaPoints = new Stack<Double>();
+//        System.out.println("-Deriving bin width (" + binWidth + ")");
         double currentBinWith = minChunProb;
         while(currentBinWith <= maxChurnProb) {
             currentBinWith += binWidth;
@@ -130,6 +139,7 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
         }
 
         // derive the TPR and FPR coordinates
+//        System.out.println("-Calculating points based on sigma prevision (" + sigmaPoints.size() + ")");
         while(!sigmaPoints.empty()) {
             double sigma = sigmaPoints.pop();
 
@@ -170,6 +180,12 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
             double fpr = fpTally / (fpTally + tnTally);
             fpr *= 100;
 
+            // control for NAN where 0 is the numerator
+            if((new Double(tpr)).isNaN())
+                tpr = 0;
+            if((new Double(fpr)).isNaN())
+                fpr = 0;
+
             // map them
             tprToFPR.put(tpr,fpr);
         }
@@ -190,6 +206,7 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
      * Convience function to derive the ROC
      */
     private double deriveROC(TreeMap<Double,Double> tprToFPR) {
+//        System.out.println("Deriving ROC");
         double auc = 0;
 
         // convert the keyset into indexed elements
@@ -222,7 +239,15 @@ public class LinearAverageDescentLearningProcedure implements LinearLearningProc
 
         // divide by the total possible area (i.e. 100 x 100)
         auc /= (100 * 100);
+//        System.out.println("ROC = " + auc);
+        if((new Double(auc)).isNaN())
+            System.out.println("Shit!");
 
         return auc;
+    }
+
+    @Override
+    public int getM() {
+        return this.m;
     }
 }

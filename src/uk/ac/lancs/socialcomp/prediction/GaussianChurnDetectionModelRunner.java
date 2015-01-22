@@ -6,7 +6,7 @@ import uk.ac.lancs.socialcomp.prediction.learningProcedures.gaussian.DualStochas
 import uk.ac.lancs.socialcomp.prediction.learningProcedures.gaussian.GaussianLearningProcedure;
 import uk.ac.lancs.socialcomp.prediction.learningProcedures.gaussian.GaussianLearningProcedureTypes;
 import uk.ac.lancs.socialcomp.prediction.learningProcedures.gaussian.StochasticGradientDescent;
-import uk.ac.lancs.socialcomp.prediction.models.gaussianSequence.ModelConfiguration;
+import uk.ac.lancs.socialcomp.prediction.models.gaussianSequence.GaussianModelConfiguration;
 
 import java.text.DecimalFormat;
 
@@ -20,11 +20,12 @@ public class GaussianChurnDetectionModelRunner implements GaussianLearningProced
     public static void main(String[] args) {
 
         // platform to run
-//        String[] platforms = {"facebook", "sap", "serverfault"};
+//        String[] platforms = {"facebook", "sap", "serverfault","boards"};
         String[] platforms = {"boards"};
 
         // lifecycle fidelity setting
-        int[] ks = {5,10,20};
+//        int[] ks = {5,10,20};
+        int[] ks = {20};
 
         // lambda and eta setting for the above platform and fidelity
         double lambda = 0.01;
@@ -70,7 +71,10 @@ public class GaussianChurnDetectionModelRunner implements GaussianLearningProced
 
         // Run 2: using the best tuned hyperparameters
         int[] models = {1,2};
+//        int[] models = {2};
         int[] learningProcedures = {1,2};
+//        int[] learningProcedures = {2};
+
         for (String platform : platforms) {
             for (int k : ks) {
                 for (int procedure : learningProcedures) {
@@ -161,8 +165,8 @@ public class GaussianChurnDetectionModelRunner implements GaussianLearningProced
         Dataset test = builder.buildTestingData();
 
         // get the best model configuration
-        BestHyperparameterSelection selection = new BestHyperparameterSelection(platform,  k, model, learningProcedure, rho);
-        ModelConfiguration configuration = selection.getBestTunedModelConfiguration();
+        GaussianBestHyperparameterSelection selection = new GaussianBestHyperparameterSelection(platform,  k, model, learningProcedure, rho);
+        GaussianModelConfiguration configuration = selection.getBestTunedModelConfiguration();
 
         // apply the model to the test set
         GaussianLearningProcedure procedure = null;

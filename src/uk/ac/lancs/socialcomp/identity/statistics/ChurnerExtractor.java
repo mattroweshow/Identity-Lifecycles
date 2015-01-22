@@ -1,12 +1,13 @@
 package uk.ac.lancs.socialcomp.identity.statistics;
 
+import uk.ac.lancs.socialcomp.prediction.features.Feature;
+
+import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * Author: Matthew Rowe
@@ -32,20 +33,30 @@ public class ChurnerExtractor {
             properties.load(new FileInputStream("data/properties/" + DB + "-stats.properties"));
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date cutoff = sdf.parse(properties.getProperty("churn_cutoff").toString());
+            Date cutoff2 = sdf.parse(properties.getProperty("churn_cutoff_end").toString());
 
             // get the lifetimes of each user
             LifeTimeExtractor lifeTimeExtractor = new LifeTimeExtractor(this.DB);
             List<Lifetime> lifeTimes = lifeTimeExtractor.deriveLifetimes();
 
+            HashSet<String> churners = new HashSet<String>();
+            HashSet<String> remainers = new HashSet<String>();
+
             for (Lifetime lifeTime : lifeTimes) {
                 // get the end of the lifeTime
                 Date death = lifeTime.getDeath();
-                if(death.before(cutoff)) {
-                    userToLabel.put(lifeTime.getUserid(),1);
-                } else {
-                    userToLabel.put(lifeTime.getUserid(), 0);
+                if(death.after(cutoff)) {
+                    if(death.before(cutoff2)) {
+                        userToLabel.put(lifeTime.getUserid(),1);
+                        churners.add(lifeTime.getUserid());
+                    } else {
+                        userToLabel.put(lifeTime.getUserid(), 0);
+                        remainers.add(lifeTime.getUserid());
+                    }
                 }
             }
+            System.out.println("Churners = " + churners.size());
+            System.out.println("Remainers = " + remainers.size());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -62,7 +73,6 @@ public class ChurnerExtractor {
         for (String s : userToLabel.keySet()) {
             buffer.append(s + "\t" + userToLabel.get(s) + "\n");
         }
-
         try {
             // write this to a file
             PrintWriter writer = new PrintWriter("data/logs/" + DB + "_user_churn_labels.tsv");
@@ -73,9 +83,33 @@ public class ChurnerExtractor {
         }
     }
 
+    public HashMap<String,Double> getUserToChurnOrNonChurnLabels() {
+        HashMap<String,Double> userToLabels = new HashMap<String, Double>();
+        try {
+            String filePath = "data/logs/" + DB + "_user_churn_labels.tsv";
+            BufferedReader br = new BufferedReader(new FileReader(filePath));
+            String line;
+            while ((line = br.readLine()) != null) {
+                // split the line by the tab delimiter
+                String[] toks = line.split("\t");
+
+                // get the userid and churn label
+                if(toks.length == 2) {
+                    String userid = toks[0];
+                    double responseVariable = Double.parseDouble(toks[1]);
+                    userToLabels.put(userid,responseVariable);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return userToLabels;
+    }
+
     public static void main(String[] args) {
 
-        String[] dbNames = {"facebook","sap","serverfault"};
+//        String[] dbNames = {"facebook","sap","serverfault"};
+        String[] dbNames = {"boards"};
 
         for (String dbName : dbNames) {
             System.out.println("Getting the churners and non-churners from: " + dbName);

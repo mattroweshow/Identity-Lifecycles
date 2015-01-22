@@ -150,6 +150,11 @@ public class SingleGSDetectionModel implements PredictionModel, FeaturePropertie
     }
 
     @Override
+    public void updateBatch(int featureIndex) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
     public int getEpochs() {
         return this.epochs;
     }

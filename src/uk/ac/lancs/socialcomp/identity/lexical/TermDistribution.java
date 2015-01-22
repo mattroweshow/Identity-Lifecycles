@@ -11,10 +11,14 @@ import uk.ac.lancs.socialcomp.io.Database;
 import uk.ac.lancs.socialcomp.io.QueryGrabber;
 import uk.ac.lancs.socialcomp.tools.text.StringTokeniser;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -26,15 +30,17 @@ public class TermDistribution {
 
     String DB;
     String split;
+    int k;
 
     HashMap<String,Date> postToDate;
     HashMap<String,HashSet<String>> userToPosts;
     HashMap<String,String> postToUser;
     HashMap<String,String> postToContent;
 
-    public TermDistribution(String db, String split) {
+    public TermDistribution(String db, String split, int k) {
         this.DB = db;
         this.split = split;
+        this.k = k;
 
         try {
             System.out.println("-Loading data into memory");
@@ -50,6 +56,15 @@ public class TermDistribution {
 
             // query the db
             Statement statement = connection.createStatement();
+            statement.setFetchSize(100);    // restrict the fetch size in order to scale the querying
+
+            // get the churn point cutoff - new code to ensure that we are predicting churners from analysis point
+            Properties properties = new Properties();
+            properties.load(new FileInputStream("data/properties/" + DB + "-stats.properties"));
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            Date cutoff = sdf.parse(properties.getProperty("churn_cutoff"));
+
+
             ResultSet results = statement.executeQuery(query);
             while(results.next())  {
                 String postid = results.getString("messageuri");
@@ -57,25 +72,28 @@ public class TermDistribution {
                 String userid = results.getString("contributor");
                 String content = results.getString("content");
 
-                // insert into the maps
-                if(userToPosts.containsKey(userid)) {
-                    HashSet<String> posts = userToPosts.get(userid);
-                    posts.add(postid);
-                    userToPosts.put(userid,posts);
-                } else {
-                    HashSet<String> posts = new HashSet<String>();
-                    posts.add(postid);
-                    userToPosts.put(userid,posts);
+                // insert into the maps if the postdate appears before the cutoff
+                if(postDate.equals(cutoff) || postDate.before(cutoff)) {
+                    if(userToPosts.containsKey(userid)) {
+                        HashSet<String> posts = userToPosts.get(userid);
+                        posts.add(postid);
+                        userToPosts.put(userid,posts);
+                    } else {
+                        HashSet<String> posts = new HashSet<String>();
+                        posts.add(postid);
+                        userToPosts.put(userid,posts);
+                    }
+                    postToDate.put(postid, postDate);
+                    postToUser.put(postid,userid);
+                    postToContent.put(postid,content);
                 }
-                postToDate.put(postid,postDate);
-                postToUser.put(postid,userid);
-                postToContent.put(postid,content);
             }
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
 
 
     /*
@@ -96,7 +114,8 @@ public class TermDistribution {
 
             // get the lifeperods of each user
             LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
-            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+//            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(this.postToDate,this.userToPosts);
 
             // derive the term distribution across each stage
             StringBuffer buffer = new StringBuffer();
@@ -104,8 +123,8 @@ public class TermDistribution {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     try {
-                        TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
-                        if(stageEntropies.size() == 20) {
+                        if(userToPosts.get(user).size() >= (2*k)) {
+                            TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
                             String vector = this.convertToStringVector(stageEntropies);
                             buffer.append(user + "\t" + vector + "\n");
                         }
@@ -114,7 +133,7 @@ public class TermDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_lexical_entropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "/" + DB + "_" + split + "_lexical_entropies_stages_" + k + ".tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -128,7 +147,7 @@ public class TermDistribution {
 
         // split the lifetime up into 20 equal sized stages
         LifetimeStageDeriver lifetimeStageDeriver = new LifetimeStageDeriver(lifetime, postToDate);
-        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(20);
+        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(k);
 
         // Derive the distribution of terms in each interval
         int intervalCount = 0;
@@ -203,7 +222,8 @@ public class TermDistribution {
 
             // get the lifeperods of each user
             LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
-            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+//            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(this.postToDate,this.userToPosts);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
@@ -211,8 +231,8 @@ public class TermDistribution {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     try {
-                        TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
-                        if(stageEntropies.size() == 20) {
+                        if(userToPosts.get(user).size() >= (2*k)) {
+                            TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
                             String vector = this.convertToStringVector(stageEntropies);
                             buffer.append(user + "\t" + vector + "\n");
                         }
@@ -221,7 +241,7 @@ public class TermDistribution {
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_lexical_user_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "/" + DB + "_" + split + "_lexical_user_crossentropies_stages_" + k + ".tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -230,12 +250,15 @@ public class TermDistribution {
         }
     }
 
+    /*
+     * Derives the cross period entropie (i.e. comparing the previous lifecycle stage with the current one
+     */
     private TreeMap<Integer,Double> deriveCrossPeriodEntropies(String user,HashSet<String> posts, Lifetime lifetime) {
         TreeMap<Integer,Double> stageEntropies = new TreeMap<Integer, Double>();
 
         // split the lifetime up into 20 equal sized stages
         LifetimeStageDeriver lifetimeStageDeriver = new LifetimeStageDeriver(lifetime, postToDate);
-        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(20);
+        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(k);
 
         // derive the term distribution over the time period and persist them
         TreeMap<Integer,DiscreteProbabilityDistribution> stageDistributions = new TreeMap<Integer, DiscreteProbabilityDistribution>();
@@ -330,7 +353,8 @@ public class TermDistribution {
 
             // get the lifeperods of each user
             LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
-            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+//            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(this.postToDate,this.userToPosts);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
@@ -340,21 +364,20 @@ public class TermDistribution {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
                     try {
-                        TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
-                        if(stageEntropies.size() == 20) {
+                        if(userToPosts.get(user).size() >= (2*k)) {
+                            TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
                             String vector = this.convertToStringVector(stageEntropies);
                             buffer.append(user + "\t" + vector + "\n");
                         }
                     } catch (Exception e) {
                     }
-
-                    double soFar = (count / totalUsers) * 100;
-                    System.out.println("soFar = " + soFar);
-                    count++;
                 }
+                double soFar = (count / totalUsers) * 100;
+                System.out.println("soFar = " + soFar);
+                count++;
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_lexical_community_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "/" + DB + "_" + split + "_lexical_community_crossentropies_stages_" + k + ".tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -368,7 +391,7 @@ public class TermDistribution {
 
         // split the lifetime up into 20 equal sized stages
         LifetimeStageDeriver lifetimeStageDeriver = new LifetimeStageDeriver(lifetime, postToDate);
-        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(20);
+        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(k);
 
         // derive the term distribution of the user at each time step and compare this to the community's distribution at the same time interval
         int intervalCount = 0;
@@ -478,15 +501,27 @@ public class TermDistribution {
 
     public static void main(String[] args) {
 
-        String[] platforms = {"boards"};
-        String split = "test";
+//        String[] platforms = {"facebook", "serverfault", "sap"};
+        String[] platforms = {"sap"};
+        String[] splits = {"train","test"};
+//        String split = "train";
+//        String split = "test";
+
+        // test different numbers of lifecycle stages
+        int[] ks = {5,10,20};
 
         for (String platform : platforms) {
             System.out.println("\nProceessing: " + platform);
-            TermDistribution termDistribution = new TermDistribution(platform,split);
-            termDistribution.deriveEntropyPerStageDistributions();
-            termDistribution.deriveCrossEntropyPerStageDistributions();
-            termDistribution.deriveCommunityDependentStageDistributions();
+            for (String split : splits) {
+                System.out.println("Split: " + split);
+                for (int k : ks) {
+                    System.out.println(k);
+                    TermDistribution termDistribution = new TermDistribution(platform, split, k);
+                    termDistribution.deriveEntropyPerStageDistributions();
+                    termDistribution.deriveCrossEntropyPerStageDistributions();
+                    termDistribution.deriveCommunityDependentStageDistributions();
+                }
+            }
         }
 
 

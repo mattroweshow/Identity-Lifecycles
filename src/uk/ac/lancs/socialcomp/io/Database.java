@@ -12,7 +12,7 @@ public class Database {
         properties.load(new FileInputStream("data/properties/" + name + "-db.properties"));
         Class.forName ("com.mysql.jdbc.Driver").newInstance();
         return DriverManager.getConnection(
-                properties.getProperty("dbURL") + properties.getProperty("dbNAME"),
+                properties.getProperty("dbURL") + properties.getProperty("dbNAME") + "?useCursorFetch=true",
                 properties.getProperty("dbUSER"),
                 properties.getProperty("dbPASS"));
 

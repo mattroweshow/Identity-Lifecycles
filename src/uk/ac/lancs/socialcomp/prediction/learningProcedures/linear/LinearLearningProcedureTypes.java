@@ -6,4 +6,7 @@ package uk.ac.lancs.socialcomp.prediction.learningProcedures.linear;
  * Date / Time : 19/09/2014 / 15:32
  */
 public interface LinearLearningProcedureTypes {
+
+    final static int AD = 1;
+    final static int SD = 2;
 }

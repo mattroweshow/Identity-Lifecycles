@@ -133,7 +133,8 @@ public class PostsPerDayDistribution {
     public static void main(String[] args) {
         try {
 
-            String[] dbNames = {"facebook","sap","serverfault"};
+//            String[] dbNames = {"facebook","sap","serverfault"};
+            String[] dbNames = {"boards"};
 
             for (String dbName : dbNames) {
                 System.out.println("Deriving posts per day distribution for: " + dbName);

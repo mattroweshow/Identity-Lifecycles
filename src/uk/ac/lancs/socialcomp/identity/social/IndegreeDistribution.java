@@ -10,10 +10,15 @@ import uk.ac.lancs.socialcomp.identity.statistics.LifetimeStageDeriver;
 import uk.ac.lancs.socialcomp.io.Database;
 import uk.ac.lancs.socialcomp.io.QueryGrabber;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.PrintWriter;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -26,6 +31,7 @@ public class IndegreeDistribution {
 //    public static final String DB = "boards";
     String DB;
     String split;
+    int k;
 
     HashMap<String,Date> postToDate;
     HashMap<String,HashSet<String>> userToPosts;
@@ -35,10 +41,11 @@ public class IndegreeDistribution {
     HashMap<String,HashSet<String>> originalToReplies;
 
 
-    public IndegreeDistribution(String DB, String split) {
+    public IndegreeDistribution(String DB, String split, int k) {
         // set the db to use and the split
         this.DB = DB;
         this.split = split;
+        this.k = k;
 
         // load data into memory
         try {
@@ -52,6 +59,12 @@ public class IndegreeDistribution {
             postToDate = new HashMap<String, Date>();
             postToUser = new HashMap<String, String>();
 
+            // get the churn point cutoff - new code to ensure that we are predicting churners from analysis point
+            Properties properties = new Properties();
+            properties.load(new FileInputStream("data/properties/" + DB + "-stats.properties"));
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            Date cutoff = sdf.parse(properties.getProperty("churn_cutoff"));
+
             // query the db
             Statement statement = connection.createStatement();
             ResultSet results = statement.executeQuery(query);
@@ -60,18 +73,20 @@ public class IndegreeDistribution {
                 Date postDate = new Date(results.getTimestamp("created").getTime());
                 String userid = results.getString("contributor");
 
-                // insert into the maps
-                if(userToPosts.containsKey(userid)) {
-                    HashSet<String> posts = userToPosts.get(userid);
-                    posts.add(postid);
-                    userToPosts.put(userid,posts);
-                } else {
-                    HashSet<String> posts = new HashSet<String>();
-                    posts.add(postid);
-                    userToPosts.put(userid,posts);
+                // insert into the maps if the postdate appears before the cutoff
+                if(postDate.equals(cutoff) || postDate.before(cutoff)) {
+                    if(userToPosts.containsKey(userid)) {
+                        HashSet<String> posts = userToPosts.get(userid);
+                        posts.add(postid);
+                        userToPosts.put(userid,posts);
+                    } else {
+                        HashSet<String> posts = new HashSet<String>();
+                        posts.add(postid);
+                        userToPosts.put(userid,posts);
+                    }
+                    postToDate.put(postid,postDate);
+                    postToUser.put(postid,userid);
                 }
-                postToDate.put(postid,postDate);
-                postToUser.put(postid,userid);
             }
             statement.close();
 
@@ -105,6 +120,8 @@ public class IndegreeDistribution {
         }
     }
 
+
+
     /*
      * Derives the period-specific entropy of the user's indegree distribution
      */
@@ -123,22 +140,23 @@ public class IndegreeDistribution {
 
             // get the lifeperods of each user
             LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
-            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+//            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(this.postToDate,this.userToPosts);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
             for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
-                    TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
-                    if(stageEntropies.size() == 20) {
+                    if(lifetimes.get(user).getPosts().size() >= (2*k)) {
+                        TreeMap<Integer,Double> stageEntropies = this.derivePeriodIndependentEntropy(user,this.userToPosts.get(user), lifetimes.get(user));
                         String vector = this.convertToStringVector(stageEntropies);
                         buffer.append(user + "\t" + vector + "\n");
                     }
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_indegree_entropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "/" + DB + "_" + split + "_indegree_entropies_stages_" + k + ".tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -152,7 +170,7 @@ public class IndegreeDistribution {
 
         // split the lifetime up into 20 equal sized stages
         LifetimeStageDeriver lifetimeStageDeriver = new LifetimeStageDeriver(lifetime, postToDate);
-        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(20);
+        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(k);
 
         // get the set of replies to the user's posts
         HashSet<String> repliesToUserPosts = new HashSet<String>();
@@ -228,22 +246,23 @@ public class IndegreeDistribution {
 
             // get the lifeperods of each user
             LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
-            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+//            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(this.postToDate,this.userToPosts);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
             for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
-                    TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
-                    if(stageEntropies.size() == 20) {
+                    if(userToPosts.get(user).size() >= (2*k)) {
+                        TreeMap<Integer,Double> stageEntropies = this.deriveCrossPeriodEntropies(user, this.userToPosts.get(user), lifetimes.get(user));
                         String vector = this.convertToStringVector(stageEntropies);
                         buffer.append(user + "\t" + vector + "\n");
                     }
                 }
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_indegree_user_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "/" + DB + "_" + split + "_indegree_user_crossentropies_stages_" + k + ".tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -257,7 +276,7 @@ public class IndegreeDistribution {
 
         // split the lifetime up into 20 equal sized stages
         LifetimeStageDeriver lifetimeStageDeriver = new LifetimeStageDeriver(lifetime, postToDate);
-        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(20);
+        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(k);
 
         // get the set of replies to the user's posts
         HashSet<String> repliesToUserPosts = new HashSet<String>();
@@ -359,7 +378,8 @@ public class IndegreeDistribution {
 
             // get the lifeperods of each user
             LifeTimeExtractor extractor = new LifeTimeExtractor(DB);
-            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+//            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(DB);
+            HashMap<String,Lifetime> lifetimes = extractor.deriveLifetimeMap(this.postToDate,this.userToPosts);
 
             // derive the activity proportion for each user across his stages
             StringBuffer buffer = new StringBuffer();
@@ -368,19 +388,18 @@ public class IndegreeDistribution {
             for (String user : users) {
                 // the user may not have initiated anything, hence only call the function if he has
                 if(userToPosts.containsKey(user)) {
-                    TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user,this.userToPosts.get(user), lifetimes.get(user));
-                    if(stageEntropies.size() == 20) {
+                    if(userToPosts.get(user).size() >= (2*k)) {
+                        TreeMap<Integer,Double> stageEntropies = this.deriveCommunityPeriodEntropies(user,this.userToPosts.get(user), lifetimes.get(user));
                         String vector = this.convertToStringVector(stageEntropies);
                         buffer.append(user + "\t" + vector + "\n");
                     }
-
-                    double soFar = (count / totalUsers) * 100;
-                    System.out.println("soFar = " + soFar);
-                    count++;
                 }
+                double soFar = (count / totalUsers) * 100;
+                System.out.println("soFar = " + soFar);
+                count++;
             }
             // write the whole thing to a file
-            PrintWriter writer = new PrintWriter("data/logs/" + DB + "_" + split + "_indegree_community_crossentropies_stages.tsv");
+            PrintWriter writer = new PrintWriter("data/logs/" + DB + "/" + DB + "_" + split + "_indegree_community_crossentropies_stages_" + k + ".tsv");
             writer.write(buffer.toString());
             writer.close();
 
@@ -394,7 +413,7 @@ public class IndegreeDistribution {
 
         // split the lifetime up into 20 equal sized stages
         LifetimeStageDeriver lifetimeStageDeriver = new LifetimeStageDeriver(lifetime, postToDate);
-        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(20);
+        TreeMap<Date,Interval> intervals = lifetimeStageDeriver.deriveStageIntervals(k);
 
         // get the set of replies to the user's posts
         HashSet<String> repliesToUserPosts = new HashSet<String>();
@@ -508,11 +527,30 @@ public class IndegreeDistribution {
 
     public static void main(String[] args) {
 
-//        IndegreeDistribution indegreeDistribution = new IndegreeDistribution();
-//
-//        indegreeDistribution.deriveEntropyPerStageDistributions();
-//        indegreeDistribution.deriveCrossEntropyPerStageDistributions();
-//        indegreeDistribution.deriveCommunityDependentStageDistributions();
+
+        String[] platforms = {"facebook", "serverfault", "sap"};
+//        String[] platforms = {"facebook"};
+        String[] splits = {"train","test"};
+//        String split = "train";
+//        String split = "test";
+
+        // test different numbers of lifecycle stages
+        int[] ks = {5,10,20};
+
+        for (String platform : platforms) {
+            System.out.println("\nProceessing: " + platform);
+            for (String split : splits) {
+                System.out.println("Split: " + split);
+                for (int k : ks) {
+                    System.out.println(k);
+                    IndegreeDistribution distribution = new IndegreeDistribution(platform,split,k);
+                    distribution.deriveEntropyPerStageDistributions();
+                    distribution.deriveCrossEntropyPerStageDistributions();
+                    distribution.deriveCommunityDependentStageDistributions();
+                }
+            }
+        }
+
 
 
 
