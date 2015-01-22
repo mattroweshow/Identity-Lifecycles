@@ -1,1 +1,0 @@
-SELECT robust_scn_messages.messageuri, robust_scn_messages.contributor, robust_scn_messages.created, robust_scn_messagecontent.text as "content"  FROM robust_scn_messages, robust_scn_messagecontent WHERE robust_scn_messages.messageuri=robust_scn_messagecontent.messageuri

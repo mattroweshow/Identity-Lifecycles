@@ -1,1 +1,0 @@
-SELECT id AS "reply", parent_id AS "original" FROM post WHERE post_type_id=2

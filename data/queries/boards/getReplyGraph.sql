@@ -1,1 +1,0 @@
-SELECT replyingpostid AS "reply", origpostid AS "original" FROM replies

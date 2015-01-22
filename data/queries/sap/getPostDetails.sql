@@ -1,1 +1,0 @@
-SELECT messageuri, contributor, created FROM robust_SCN_messages
