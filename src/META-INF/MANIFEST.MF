@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Main-Class: uk.ac.lancs.socialcomp.identity.social.IndegreeDistributio
+ n
+
